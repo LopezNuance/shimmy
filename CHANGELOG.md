@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.2-test] - 2026-01-09
+
+## What's Changed
+* Remove Matthias Zepper from sponsor list by @Copilot in https://github.com/Michael-A-Kuykendall/shimmy/pull/164
+* feat: add vision feature with cross-platform testing by @Michael-A-Kuykendall in https://github.com/Michael-A-Kuykendall/shimmy/pull/167
+
+
+**Full Changelog**: https://github.com/Michael-A-Kuykendall/shimmy/compare/v1.8.0...v1.8.2-test
+
+
 ## [1.8.1] - 2025-12-08
 
 ### 🐳 **DOCKER PUBLISHING INFRASTRUCTURE** - Container Registry Publishing Fixed
@@ -734,3 +744,5 @@ Shimmy is committed to being free forever with no asterisks, no "free for now" p
 
 [Unreleased]: https://github.com/Michael-A-Kuykendall/shimmy/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Michael-A-Kuykendall/shimmy/releases/tag/v0.1.0
+
+[1.8.2-test]: https://github.com/Michael-A-Kuykendall/shimmy/releases/tag/v1.8.2-test
