@@ -441,7 +441,9 @@ impl InferenceEngine for LlamaEngine {
             // The context lifetime is tied to &model; storing both in the same struct ensures safety
             let ctx: llama::context::LlamaContext<'static> =
                 unsafe { std::mem::transmute(ctx_tmp) };
+            let native_template = model.chat_template(None).ok();
             Ok(Box::new(LlamaLoaded {
+                native_template,
                 model,
                 ctx: Mutex::new(ctx),
             }))
@@ -456,6 +458,7 @@ impl InferenceEngine for LlamaEngine {
 
 #[cfg(feature = "llama")]
 struct LlamaLoaded {
+    native_template: Option<shimmy_llama_cpp_2::model::LlamaChatTemplate>,
     model: shimmy_llama_cpp_2::model::LlamaModel,
     ctx: Mutex<shimmy_llama_cpp_2::context::LlamaContext<'static>>,
 }
@@ -556,6 +559,21 @@ impl LoadedModel for LlamaLoaded {
         }
 
         Ok(out)
+    }
+
+    fn format_prompt(&self, messages: &[(String, String)]) -> Option<String> {
+        let tmpl = self.native_template.as_ref()?;
+        let chat: Vec<shimmy_llama_cpp_2::model::LlamaChatMessage> = messages
+            .iter()
+            .filter_map(|(role, content)| {
+                shimmy_llama_cpp_2::model::LlamaChatMessage::new(
+                    role.clone(),
+                    content.clone(),
+                )
+                .ok()
+            })
+            .collect();
+        self.model.apply_chat_template(tmpl, &chat, true).ok()
     }
 }
 
