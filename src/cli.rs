@@ -33,6 +33,15 @@ pub struct Cli {
     /// Offload first N MoE layers' expert tensors to CPU
     #[arg(long, global = true, value_name = "N", conflicts_with = "cpu_moe")]
     pub n_cpu_moe: Option<usize>,
+
+    /// Default KV-cache context length for all auto-discovered models.
+    /// Overrides the built-in default (8192).  Per-request `options.num_ctx`
+    /// can override this further on a call-by-call basis.
+    ///
+    /// Use a smaller value (e.g. 2048) for reviewer/leaf instances to reduce
+    /// VRAM usage; use a larger value (e.g. 16384) for long-context experiments.
+    #[arg(long, global = true, value_name = "N")]
+    pub ctx_len: Option<usize>,
 }
 
 #[derive(Subcommand, Debug)]

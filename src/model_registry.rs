@@ -17,6 +17,10 @@ pub struct ModelEntry {
 pub struct Registry {
     inner: HashMap<String, ModelEntry>,
     pub discovered_models: HashMap<String, DiscoveredModel>,
+    /// Default KV-cache context length applied to auto-discovered models that
+    /// do not have an explicit `ctx_len` set.  Overridable via `--ctx-len` at
+    /// startup and further per-request via `options.num_ctx` in the API body.
+    pub default_ctx_len: usize,
 }
 
 // Alias for backward compatibility and mission expectations
@@ -27,6 +31,7 @@ impl Registry {
         Self {
             inner: HashMap::new(),
             discovered_models: HashMap::new(),
+            default_ctx_len: 8192,
         }
     }
 
@@ -47,15 +52,17 @@ impl Registry {
     }
 
     pub fn auto_register_discovered(&mut self) {
+        let default_ctx = self.default_ctx_len;
         // Convert discovered models to registry entries
         for (name, discovered) in &self.discovered_models {
             if !self.inner.contains_key(name) {
+                let template = self.infer_template(name);
                 let entry = ModelEntry {
                     name: name.clone(),
                     base_path: discovered.path.clone(),
                     lora_path: discovered.lora_path.clone(),
-                    template: Some(self.infer_template(name)),
-                    ctx_len: Some(4096),
+                    template: Some(template),
+                    ctx_len: Some(default_ctx),
                     n_threads: None,
                 };
                 self.inner.insert(name.clone(), entry);
@@ -102,7 +109,7 @@ impl Registry {
                 base_path: e.base_path.clone(),
                 lora_path: e.lora_path.clone(),
                 template: e.template.clone(),
-                ctx_len: e.ctx_len.unwrap_or(4096),
+                ctx_len: e.ctx_len.unwrap_or(self.default_ctx_len),
                 n_threads: e.n_threads,
             });
         }
@@ -114,7 +121,7 @@ impl Registry {
                 base_path: discovered.path.clone(),
                 lora_path: discovered.lora_path.clone(),
                 template: Some(self.infer_template(&discovered.name)),
-                ctx_len: 4096,
+                ctx_len: self.default_ctx_len,
                 n_threads: None,
             });
         }

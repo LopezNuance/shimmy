@@ -80,5 +80,8 @@ mod issue_version_validation;
 #[path = "regression/issue_184_native_chat_template.rs"]
 mod issue_184_native_chat_template;
 
+#[path = "regression/issue_186_configurable_ctx_len.rs"]
+mod issue_186_configurable_ctx_len;
+
 // This test file is now executable via: cargo test --test regression
 // CI/CD runs this automatically before main test suite

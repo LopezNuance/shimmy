@@ -1,9 +1,28 @@
 #![allow(dead_code)]
 
-use crate::{api::ChatMessage, AppState};
+use crate::{api::ChatMessage, engine::LoadedModel, AppState};
 use axum::{extract::State, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+/// Ollama-compatible per-request model options.
+///
+/// Shimmy honours `num_ctx` to override the KV-cache context length for a
+/// single request.  The value is capped at the limit configured by the server
+/// (`--ctx-len` at startup); requesting more tokens than the server allocated
+/// returns a 400 error.  Other Ollama option fields are accepted and ignored so
+/// that clients written for Ollama work without modification.
+#[derive(Debug, Deserialize, Default)]
+pub struct RequestOptions {
+    /// Override the KV-cache context length for this request only.
+    /// Useful when the same Shimmy instance serves both short reviewer calls
+    /// (small ctx) and long in-loop deliberation calls (large ctx).
+    pub num_ctx: Option<usize>,
+
+    /// Additional Ollama options (accepted, ignored).
+    #[serde(flatten)]
+    pub _extra: serde_json::Value,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct ChatCompletionRequest {
@@ -19,6 +38,9 @@ pub struct ChatCompletionRequest {
     pub top_p: Option<f32>,
     #[serde(default)]
     pub stop: Option<StopTokens>,
+    /// Ollama-compatible per-request model options (e.g. `{"num_ctx": 8192}`).
+    #[serde(default)]
+    pub options: Option<RequestOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -153,6 +175,27 @@ pub async fn chat_completions(
         });
         return (StatusCode::NOT_FOUND, Json(error_response)).into_response();
     };
+    // Apply per-request ctx_len override from options.num_ctx.
+    // The requested value is capped at the server's configured ctx_len so
+    // callers cannot exceed the pre-allocated KV cache.
+    let mut spec = spec;
+    if let Some(req_ctx) = req.options.as_ref().and_then(|o| o.num_ctx) {
+        if req_ctx > spec.ctx_len {
+            tracing::warn!(
+                "options.num_ctx={} exceeds server ctx_len={}; capping at server limit",
+                req_ctx,
+                spec.ctx_len
+            );
+        } else {
+            tracing::debug!(
+                "options.num_ctx override: {} → {} for model '{}'",
+                spec.ctx_len,
+                req_ctx,
+                req.model
+            );
+            spec.ctx_len = req_ctx;
+        }
+    }
     tracing::debug!("Found model spec for '{}': {:?}", req.model, spec);
     let engine = &state.engine;
     let loaded = match engine.load(&spec).await {

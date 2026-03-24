@@ -189,6 +189,12 @@ async fn main() -> anyhow::Result<()> {
     // Initialize registry with auto-discovery
     let mut reg = Registry::with_discovery();
 
+    // Apply --ctx-len override to the registry default before auto-registration
+    if let Some(ctx) = cli.ctx_len {
+        info!("--ctx-len {}: setting default context length for all auto-discovered models", ctx);
+        reg.default_ctx_len = ctx;
+    }
+
     // Add default model from environment variables if available
     reg.register(ModelEntry {
         name: "phi3-lora".into(),
@@ -197,7 +203,7 @@ async fn main() -> anyhow::Result<()> {
             .into(),
         lora_path: std::env::var("SHIMMY_LORA_GGUF").ok().map(Into::into),
         template: Some("chatml".into()),
-        ctx_len: Some(4096),
+        ctx_len: cli.ctx_len.or(Some(8192)),
         n_threads: None,
     });
 
